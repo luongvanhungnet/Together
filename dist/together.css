@@ -29,3 +29,7 @@
 #friend-challenge{max-width:none}
 #friend-challenge button{margin:4px 4px 0 0}
 #challenge-link{width:100%;padding:8px;color:inherit;background:#14231a;border:1px solid #435348;border-radius:4px}
+.levels{display:block}
+.level-group{margin-bottom:12px}
+.level-group h3{font-size:13px;margin:0 0 7px}
+.level-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
