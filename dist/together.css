@@ -26,3 +26,6 @@
 .weekly-archive button[aria-pressed=true]{border-color:#c9fc70}
 .weekly-archive small{display:block;color:#c9fc70}
 #next-challenge{width:100%;margin-top:5px;text-align:left}
+#friend-challenge{max-width:none}
+#friend-challenge button{margin:4px 4px 0 0}
+#challenge-link{width:100%;padding:8px;color:inherit;background:#14231a;border:1px solid #435348;border-radius:4px}

@@ -22,23 +22,23 @@ function todayKey(now=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZo
 function validDay(v){return /^\d{4}-\d{2}-\d{2}$/.test(v||'')&&!isNaN(Date.parse(v))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v}
 function dailyBoard(date){let serial=Math.floor(Date.parse(date+'T00:00:00Z')/86400000);return DAILY_LEVELS[((serial%DAILY_LEVELS.length)+DAILY_LEVELS.length)%DAILY_LEVELS.length]}
 function game(){return mode==='daily'?dailyBoard(day):stages[level]}
-function saveKey(){return mode==='daily'?'d:'+day:'c:'+level}
+function saveKey(){return mode==='daily'?(challengeRun&&day===incoming.day?'challenge:'+challengeToken:'d:'+day):'c:'+level}
 function stars(moves,par){return !Number.isFinite(moves)||moves<par?0:moves===par?3:moves<=par+Math.max(2,Math.ceil(par*.2))?2:1}
 function starText(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
 function validPosition(v,g){return Array.isArray(v)&&v.length===g.start.length&&new Set(v).size===v.length&&v.every(x=>Number.isInteger(x)&&x>=0&&x<g.n*g.n&&!g.walls.includes(x))}
 function validSave(s,g){if(!s||!validPosition(s.p,g)||!Array.isArray(s.history)||s.history.length>10000)return false;let sequence=[...s.history,s.p];if(!sequence.every(v=>validPosition(v,g)))return false;if(!same(sequence[0],g.start))return false;for(let i=1;i<sequence.length;i++){if(!validPosition(sequence[i],g)||!Array.from({length:4},(_,d)=>step(sequence[i-1],d,g)).some(t=>same(t,sequence[i])))return false}return true}
 function persist(){saves[saveKey()]={p:[...p],history:history.map(x=>[...x]),redoStack,hints,recorded};write('together-saves-v1',saves);write('together-last-v1',{mode,level,day});$('#save-note').textContent=storageOK?'Progress saved on this browser.':'Browser storage is unavailable. Keep this tab open to retain progress.'}
-function clearDailyLink(){if(typeof window!=='undefined'&&new URLSearchParams(location.search).has('daily')){let url=new URL(location.href);url.searchParams.delete('daily');window.history.replaceState(null,'',url)}}
+function clearDailyLink(){challengeRun=false;if(typeof window!=='undefined'&&new URLSearchParams(location.search).has('daily')){let url=new URL(location.href);url.searchParams.delete('daily');url.searchParams.delete('challenge');window.history.replaceState(null,'',url)}}
 function load(i,reset=false){if(!Number.isInteger(i)||i<0||i>=stages.length)return;clearDailyLink();mode='campaign';level=i;openBoard(reset)}
 function playDaily(date=todayKey(),reset=false){if(arguments.length===0)clearDailyLink();mode='daily';day=validDay(date)?date:todayKey();openBoard(reset)}
 function restart(){openBoard(true)}
-function openBoard(reset=false){let g=game(),s=saves[saveKey()];if(!reset&&validSave(s,g)){p=[...s.p];history=s.history.map(x=>[...x]);hints=Number.isInteger(s.hints)&&s.hints>=0?s.hints:1;recorded=s.recorded===true}else{p=[...g.start];history=[];hints=0;recorded=false}redoStack=!reset&&Array.isArray(s?.redoStack)&&validSave({p:s.redoStack.at(0),history:[...history,p,...s.redoStack.slice(1).reverse()]},g)?s.redoStack:[];hidePreview();hintContext=null;won=same(p,g.goal);if(won)recordFinish();buildBoard();draw();persist();$('#share-panel').hidden=true;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';if(won)showWin();else $('#notice').textContent=history.length?'Resumed exactly where you left off.':mode==='daily'?'Same puzzle for everyone. New puzzle at midnight Bangkok time.':level===0?'Try → then ↓. Every piece moves.':''}
+function openBoard(reset=false){resetChallengeShare();let g=game(),s=saves[saveKey()];if(!reset&&validSave(s,g)){p=[...s.p];history=s.history.map(x=>[...x]);hints=Number.isInteger(s.hints)&&s.hints>=0?s.hints:1;recorded=s.recorded===true}else{p=[...g.start];history=[];hints=0;recorded=false}redoStack=!reset&&Array.isArray(s?.redoStack)&&validSave({p:s.redoStack.at(0),history:[...history,p,...s.redoStack.slice(1).reverse()]},g)?s.redoStack:[];hidePreview();hintContext=null;won=same(p,g.goal);if(won)recordFinish();buildBoard();draw();persist();$('#share-panel').hidden=true;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';if(won)showWin();else $('#notice').textContent=history.length?'Resumed exactly where you left off.':mode==='daily'?'Same puzzle for everyone. New puzzle at midnight Bangkok time.':level===0?'Try → then ↓. Every piece moves.':''}
 function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').innerHTML=pairs.map(v=>`<div class="food-pair ${v.color}"><span class="legend-icons">${foodIcon(v.foodIcon)}<span class="pair-arrow">→</span>${foodIcon(v.animalIcon)}</span><span class="pair-label">${v.food} → ${v.animal}</span></div>`).join('');$('#board').style.gridTemplateColumns=`repeat(${g.n},1fr)`;$('#board').innerHTML=Array.from({length:g.n*g.n},(_,j)=>{let t=g.goal.indexOf(j),v=pairs[t];return `<div class="tile ${g.walls.includes(j)?'wall':''}" data-cell="${j}"${v?` role="img" aria-label="${v.animal} target for ${v.food.toLowerCase()}"`:''}>${v?`<span class="target animal-target ${v.color}">${foodIcon(v.animalIcon)}<span class="icon-label">${v.animal}</span></span>`:''}</div>`}).join('')+`<div class="piece-layer" style="--n:${g.n}">${p.map((_,i)=>{let v=pairs[i];return `<span class="moving-piece ${v.color}" data-piece="${i}" role="img" aria-label="${v.food}, feed the ${v.animal.toLowerCase()}">${foodIcon(v.foodIcon)}<span class="icon-label">${v.food}</span></span>`}).join('')}</div><div id="preview-layer" aria-hidden="true" style="--n:${g.n}"></div>`;placePieces();}
 function placePieces(){let g=game();$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{el.classList.toggle('hint-focus',hintContext?.piece===i);el.classList.toggle('fed',g.goal[i]===p[i]);el.style.transform=`translate(${(p[i]%g.n)*100}%,${Math.floor(p[i]/g.n)*100}%) translate(${(p[i]%g.n)*5}px,${Math.floor(p[i]/g.n)*5}px)`});$('#board').querySelectorAll('.tile').forEach((el,j)=>{let i=p.indexOf(j);el.classList.toggle('matched',i>=0&&g.goal[i]===j);el.classList.toggle('hint-target',hintContext!=null&&g.goal[hintContext.piece]===j)})}
-function draw(){if($('#redo'))$('#redo').disabled=!redoStack.length;let g=game();$('#levels').innerHTML=stages.map((s,i)=>{let n=stars(best[i],s.par);return `<button class="${mode==='campaign'&&i===level?'selected':''}" onclick="load(${i})" aria-label="Level ${i+1}, ${n} stars${Number.isFinite(records['c:'+i]?.bestNoHints)?', hint-free medal':''}" aria-pressed="${mode==='campaign'&&i===level}"><span>${i+1}${Number.isFinite(records['c:'+i]?.bestNoHints)?' 🏅':''}</span><small>${starText(n)}</small></button>`}).join('');let total=stages.reduce((n,g,i)=>n+stars(best[i],g.par),0),solved=stages.filter((g,i)=>stars(best[i],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[level];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:(['THE BASICS','HARD','VERY HARD','EXPERT','BRUTAL'][level]||(level>=20?'FOUR-FOOD BONUS':'BRUTAL / CHAPTER '+Math.ceil((level+1)/5)));$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':names[level];$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay()}
+function draw(){if($('#redo'))$('#redo').disabled=!redoStack.length;let g=game();$('#levels').innerHTML=stages.map((s,i)=>{let n=stars(best[i],s.par);return `<button class="${mode==='campaign'&&i===level?'selected':''}" onclick="load(${i})" aria-label="Level ${i+1}, ${n} stars${Number.isFinite(records['c:'+i]?.bestNoHints)?', hint-free medal':''}" aria-pressed="${mode==='campaign'&&i===level}"><span>${i+1}${Number.isFinite(records['c:'+i]?.bestNoHints)?' 🏅':''}</span><small>${starText(n)}</small></button>`}).join('');let total=stages.reduce((n,g,i)=>n+stars(best[i],g.par),0),solved=stages.filter((g,i)=>stars(best[i],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[level];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:(['THE BASICS','HARD','VERY HARD','EXPERT','BRUTAL'][level]||(level>=20?'FOUR-FOOD BONUS':'BRUTAL / CHAPTER '+Math.ceil((level+1)/5)));$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':names[level];$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay();renderChallenge()}
 function act(d,fromRedo=false){if(won||!Number.isInteger(d)||d<0||d>3)return;let q=step(p,d,game());if(same(p,q)){$('#notice').textContent='Blocked. Try another direction.';return}if(!fromRedo)redoStack=[];hidePreview();clearHint();history.push([...p]);p=q;won=same(p,game().goal);if(won){recordFinish();if(mode==='campaign'){best[level]=Math.min(Number.isFinite(best[level])?best[level]:Infinity,history.length);write('together-best',best)}else{let old=dailyBest[day];if(!old||history.length<old.moves||(history.length===old.moves&&hints<old.hints)){dailyBest[day]={moves:history.length,hints};write('together-daily-best',dailyBest)}}}draw();persist();$('#notice').textContent='';if(won)showWin()}
 function showWin(){let n=stars(history.length,game().par);$('#notice').innerHTML=`<strong>${starText(n)} All animals fed!</strong>${hints===0?' 🏅 Hint-free!':''}`+(mode==='campaign'&&level<stages.length-1?` <button onclick="load(${level+1})">Next level →</button>`:mode==='daily'?' Your daily result is ready to share.':' You solved the collection.');$('#share-button').hidden=mode!=='daily'}
-function undo(){if(!history.length)return;hidePreview();clearHint();redoStack.push([...p]);p=history.pop();won=false;draw();persist();$('#share-panel').hidden=true;$('#notice').textContent='Move undone.'}
+function undo(){if(!history.length)return;resetChallengeShare();hidePreview();clearHint();redoStack.push([...p]);p=history.pop();won=false;draw();persist();$('#share-panel').hidden=true;$('#notice').textContent='Move undone.'}
 function shareText(){return `Together · Daily ${day}\n${starText(stars(history.length,game().par))} · ${history.length} moves\n${hints===0?'🏅 Hint-free':hints+' hint'+(hints===1?'':'s')+' used'} · No spoilers\n${location.origin}${location.pathname}?daily=${day}`}
 async function shareResult(){if(mode!=='daily'||!won)return;let text=shareText();$('#share-panel').hidden=false;$('#share-text').value=text;try{await navigator.clipboard.writeText(text);$('#share-status').textContent='Result copied! Paste it wherever you like.'}catch{$('#share-status').textContent='Select and copy your result below.';$('#share-text').focus();$('#share-text').select()}}
 document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;let d={ArrowUp:0,w:0,ArrowRight:1,d:1,ArrowDown:2,s:2,ArrowLeft:3,a:3};if(d[e.key]!==undefined){e.preventDefault();act(d[e.key])}if(e.key==='z')undo()});let touch=null;$('#board').addEventListener('pointerdown',e=>{touch=[e.clientX,e.clientY];$('#board').setPointerCapture(e.pointerId)});$('#board').addEventListener('pointerup',e=>{if(!touch)return;let dx=e.clientX-touch[0],dy=e.clientY-touch[1];touch=null;if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;act(Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0)});$('#board').addEventListener('pointercancel',()=>touch=null);
@@ -147,4 +147,66 @@ if ($('#return-play')) {
     $('#board').scrollIntoView({block:'nearest'});
   });
 }
+const challengeLog=read('together-challenge-log', {});
+const challengeParams=new URLSearchParams(location.search);
+const challengeDay=challengeParams.get('daily');
+const challengeToken=challengeParams.get('challenge') || '';
+const challengeMatch=/^([0-9]{1,5})\.([01])\.([a-f0-9]{16})$/.exec(challengeToken);
+const incoming=validDay(challengeDay)&&challengeDay<=todayKey()&&challengeMatch&&
+  Number(challengeMatch[1])>=dailyBoard(challengeDay).par
+  ? {day:challengeDay,moves:Number(challengeMatch[1]),assisted:challengeMatch[2]==='1'} : null;
+let challengeRun=Boolean(incoming);
+
+function trackChallenge(){
+  const now=todayKey();
+  if(incoming){
+    challengeLog[challengeToken] ||= {opened:now};
+  }
+  for(const entry of Object.values(challengeLog)){
+    const elapsed=dateSerial(now)-dateSerial(entry.opened);
+    if(entry.finished&&now>entry.finished&&elapsed<=7)entry.returned=true;
+  }
+  write('together-challenge-log',challengeLog);
+}
+
+function renderChallenge(){
+  const panel=$('#friend-challenge');
+  if(!panel)return;
+  const receiving=challengeRun&&mode==='daily'&&day===incoming.day;
+  panel.hidden=!receiving&&!(mode==='daily'&&won);
+  $('#challenge-copy').hidden=mode!=='daily'||!won;
+  $('#challenge-rematch').hidden=!receiving||!won;
+  let message=receiving?'Finish this puzzle to reveal your friend’s score.':'Send this exact puzzle to a friend.';
+  if(receiving&&won){
+    const entry=challengeLog[challengeToken];
+    if(!entry.finished){entry.finished=todayKey();write('together-challenge-log',challengeLog)}
+    const theirs=incoming.moves, yours=history.length;
+    const verdict=yours===theirs?'Tie.':yours<theirs?'You used fewer moves.':'Your friend used fewer moves.';
+    message='You: '+yours+' moves '+starText(stars(yours,game().par))+
+      (hints?' (with hints). ':' (hint-free). ')+'Friend: '+theirs+' moves '+
+      starText(stars(theirs,game().par))+(incoming.assisted?' (with hints). ':' (hint-free). ')+verdict;
+  }
+  $('#challenge-message').textContent=message;
+}
+
+async function copyChallenge(){
+  if(mode!=='daily'||!won)return;
+  const nonce=Array.from(crypto.getRandomValues(new Uint8Array(8)),v=>v.toString(16).padStart(2,'0')).join('');
+  const url=new URL(location.origin+location.pathname);
+  url.searchParams.set('daily',day);
+  url.searchParams.set('challenge',history.length+'.'+Number(hints>0)+'.'+nonce);
+  const field=$('#challenge-link');
+  field.hidden=false;
+  field.value=url.href;
+  try{await navigator.clipboard.writeText(url.href);$('#challenge-status').textContent='Challenge link copied.'}
+  catch{field.focus();field.select();$('#challenge-status').textContent='Copy the challenge link below.'}
+}
+function challengeRematch(){
+  if(challengeRun&&won&&mode==='daily'&&day===incoming.day)restart();
+}
+function resetChallengeShare(){
+  const field=$('#challenge-link');
+  if(field){field.hidden=true;field.value='';$('#challenge-status').textContent=''}
+}
+trackChallenge();
 let requestedDay=new URLSearchParams(location.search).get('daily'),last=read('together-last-v1',{});if(validDay(requestedDay))playDaily(requestedDay);else if(last.mode==='daily')playDaily();else load(Number.isInteger(last.level)&&last.level>=0&&last.level<stages.length?last.level:0);
