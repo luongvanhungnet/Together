@@ -1,0 +1,73 @@
+TOGETHER GAME SPECIFICATION
+Paradox Lab | 18 November 2026
+https://paradox-lab-six-puzzles.luongvanhungnet.chatgpt.site/together.html
+
+GAME RULES
+Slide all foods in one direction. Pieces nearest the leading edge move first.
+Each piece slides until blocked by a wall, another piece, or the board edge.
+Animal tiles do not stop or lock pieces. All foods must reach their matching
+animals simultaneously. Blocked inputs do not count. There are no lives or timers.
+
+PIECES AND TARGETS
+Orange carrot → rabbit. Yellow banana → monkey. White/light gray bone → dog.
+Blue fish → cat. Two-piece levels use carrot and banana. Three-piece levels add
+fish. Four-piece levels add bone. The legend reflects the active pairs.
+Full-color Twemoji illustrations and labels distinguish foods and animals.
+Food tiles are solid, animal targets have dashed borders, and matched foods
+become smaller badges so their animals stay visible. Artwork is CC BY 4.0.
+
+CONTROLS AND FEEDBACK
+Swipe, tap on-screen arrows, or use arrow keys or WASD. Hold an on-screen arrow
+to preview the destinations, then release without moving. The preview is free
+and does not count as help. Sliding is animated with reduced-motion support.
+Undo (also Z) restores previous positions, including after a win. Redo restores
+undone moves and survives reload. A different move clears the redo branch.
+Restart resets the current attempt and its hint use. The board shows move count,
+blocked inputs, matched targets, hint feedback, and completion feedback.
+
+CAMPAIGN AND PROGRESSION
+23 freely selectable levels. Level 1 is a two-move tutorial. Levels 2–20 are
+the main progression, with up to 50 moves required. Levels 21–23 use four foods
+and have minimum solutions of 24, 28, and 41 moves. A win offers the next level.
+The Next Challenge button recommends the first unsolved level and resumes it
+if started. After all levels are solved, it recommends missing hint-free
+medals, then missing three-star scores.
+
+STARS, MEDALS, AND HINTS
+Par is the shortest solution. Three stars require par. Two stars require more
+than par but at most par + max(2, ceil(par × 20%)). Any slower finish earns one.
+Hints do not affect stars. Personal records track best moves, best hint-free
+moves, finishes, and hint-free finishes. Campaign totals show levels solved,
+stars, and hint-free medals. The level selector displays stars and medals.
+Gentle Hint highlights a useful food and its target. Reveal Next Move gives an
+exact direction. Both count as help. When the solver detects a dead end, it
+suggests Undo or Restart. Undo does not erase help already used. Win an
+unassisted attempt to earn a hint-free medal.
+
+DAILY CHALLENGES
+The date selects a shared board from 366 puzzles and changes at midnight
+Asia/Bangkok time. Dated links reopen the same board after rollover. Daily
+best scores are tracked by date. Players can copy a spoiler-free result with
+date, stars, moves, hint use, and link, with a manual clipboard fallback.
+Current and longest streaks track consecutive same-day solves. Yesterday's
+streak remains active until today's opportunity ends. The weekly panel shows
+Monday through today. Solve any three distinct daily boards from that week to
+meet the goal. Missed puzzles can count toward the goal but not the streak.
+
+CHALLENGE A FRIEND
+After a daily win, copy a link containing the exact date, move count, and hint
+status. It contains no solution. The recipient's attempt is saved separately
+from their regular daily board. The sender's score stays hidden in the UI
+until the recipient wins. Compare moves, stars, and hint status after winning.
+Fewer moves wins the comparison, and equal moves tie. Rematch restarts the
+same board. The recipient can also send a new link with their own result.
+Scores are self-reported in the link. Sharing does not grant access. The
+deployed site is owner-only, so friends need access before a link will open.
+
+SAVING AND RETENTION MEASUREMENT
+Browser storage saves current board positions, move and redo history, hint use,
+scores, records, and last mode. Standard daily resume selects today's board.
+Dated links select their board. Saves are local to the browser, and the game
+reports unavailable storage. Challenge opens, finishes, and later-day returns
+after finishing within seven days of first open are stored in the browser.
+There is no aggregate retention report or cross-device tracking.
