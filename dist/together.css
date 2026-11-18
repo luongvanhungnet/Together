@@ -17,3 +17,12 @@
 .tools{flex-wrap:wrap}
 #redo:disabled{opacity:.45;cursor:default}
 .dpad button{user-select:none;-webkit-touch-callout:none}
+.return-play{margin:20px 0;padding:16px;border:1px solid #435348;border-radius:10px;max-width:420px}
+.return-play h2{font-size:18px;margin:0}
+.return-play p{font-size:12px;margin:8px 0}
+.return-play progress{width:100%;accent-color:#c9fc70}
+.weekly-archive{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:6px;margin-top:9px}
+.weekly-archive button{padding:6px;min-height:46px;font-size:11px}
+.weekly-archive button[aria-pressed=true]{border-color:#c9fc70}
+.weekly-archive small{display:block;color:#c9fc70}
+#next-challenge{width:100%;margin-top:5px;text-align:left}
