@@ -39,7 +39,17 @@ function playDaily(date=todayKey(),reset=false){if(arguments.length===0)clearDai
 function restart(){openBoard(true)}
 function openBoard(reset=false){resetChallengeShare();let g=game(),s=saves[saveKey()];if(!reset&&validSave(s,g)){p=[...s.p];history=s.history.map(x=>[...x]);hints=Number.isInteger(s.hints)&&s.hints>=0?s.hints:1;recorded=s.recorded===true}else{p=[...g.start];history=[];hints=0;recorded=false}redoStack=!reset&&Array.isArray(s?.redoStack)&&validSave({p:s.redoStack.at(0),history:[...history,p,...s.redoStack.slice(1).reverse()]},g)?s.redoStack:[];hidePreview();hintContext=null;won=same(p,g.goal);if(won)recordFinish();buildBoard();draw();persist();$('#share-panel').hidden=true;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';if(won)showWin();else $('#notice').textContent=history.length?'Resumed exactly where you left off.':mode==='daily'?'Same puzzle for everyone. New puzzle at midnight Bangkok time.':g.id===0?'Try → then ↓. Every piece moves.':''}
 function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').innerHTML=pairs.map(v=>`<div class="food-pair ${v.color}"><span class="legend-icons">${foodIcon(v.foodIcon)}<span class="pair-arrow">→</span>${foodIcon(v.animalIcon)}</span><span class="pair-label">${v.food} → ${v.animal}</span></div>`).join('');$('#board').style.gridTemplateColumns=`repeat(${g.n},1fr)`;$('#board').innerHTML=Array.from({length:g.n*g.n},(_,j)=>{let t=g.goal.indexOf(j),v=pairs[t];return `<div class="tile ${g.walls.includes(j)?'wall':''}" data-cell="${j}"${v?` role="img" aria-label="${v.animal} target for ${v.food.toLowerCase()}"`:''}>${v?`<span class="target animal-target ${v.color}">${foodIcon(v.animalIcon)}<span class="icon-label">${v.animal}</span></span>`:''}</div>`}).join('')+`<div class="piece-layer" style="--n:${g.n}">${p.map((_,i)=>{let v=pairs[i];return `<span class="moving-piece ${v.color}" data-piece="${i}" role="img" aria-label="${v.food}, feed the ${v.animal.toLowerCase()}">${foodIcon(v.foodIcon)}<span class="icon-label">${v.food}</span></span>`}).join('')}</div><div id="preview-layer" aria-hidden="true" style="--n:${g.n}"></div>`;placePieces();}
-function placePieces(){let g=game();$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{el.classList.toggle('hint-focus',hintContext?.piece===i);const destination=p[i];
+function showFoodOnTarget(piece, cell){
+  piece.classList.add('on-target');
+  const tile=$('#board').querySelector('[data-cell="'+cell+'"]');
+  if(tile)tile.classList.add('shared-target');
+}
+function placePieces(){let g=game();$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{
+  const previous=el.dataset.position;
+  if(previous!==undefined&&previous!==String(p[i])){
+    $('#board').querySelector('[data-cell="'+previous+'"]')?.classList.remove('shared-target');
+  }
+});$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{el.classList.toggle('hint-focus',hintContext?.piece===i);const destination=p[i];
 const previous=el.dataset.position;
 const occupied=g.goal.includes(destination);
 if(previous!==String(destination)){
@@ -48,9 +58,9 @@ if(previous!==String(destination)){
   el.dataset.position=destination;
   if(occupied){
     if(previous===undefined || matchMedia('(prefers-reduced-motion: reduce)').matches){
-      el.classList.add('on-target');
+      showFoodOnTarget(el,destination);
     }else{
-      el.badgeTimer=setTimeout(()=>el.classList.add('on-target'),240);
+      el.badgeTimer=setTimeout(()=>showFoodOnTarget(el,destination),240);
     }
   }
 }
