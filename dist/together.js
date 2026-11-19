@@ -358,12 +358,21 @@ function selectPieceStyle(id){
   renderShop();
   $('#gold-status').textContent=style.name+' equipped.';
 }
+const giftCodes = new Map([
+  ['TOGETHER50', 50],
+  ['PUZZLE25', 25],
+  ['TEAMPLAY75', 75],
+  ['GOLDEN100', 100]
+]);
+
 function redeemGold(code) {
-  if(code.trim().toUpperCase()!=='TOGETHER50')return 'That gift code is invalid.';
-  if(!awardGold('gift:TOGETHER50',50))return 'You already redeemed this gift code.';
+  const canonical = code.trim().toUpperCase();
+  const amount = giftCodes.get(canonical);
+  if (amount === undefined) return 'That gift code is invalid.';
+  if (!awardGold('gift:' + canonical, amount)) return 'You already redeemed this gift code.';
   storeWallet();
   renderShop();
-  return 'Gift redeemed · +50 gold.';
+  return 'Gift redeemed · +' + amount + ' gold.';
 }
 if($('#gold-balance')){
   $('#piece-options').addEventListener('click',event=>{
