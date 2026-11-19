@@ -71,7 +71,7 @@ $('#levels').innerHTML=['Easy','Normal','Hard'].map(group=>{
   const buttons=levelButtons.filter((_,i)=>difficulty(stages[i])===group);
   return `<section class="level-group"><h3>${group}</h3><div class="level-grid">${buttons.join('')}</div></section>`;
 }).join('');
-let total=stages.reduce((n,g,i)=>n+stars(best[campaignId(i)],g.par),0),solved=stages.filter((g,i)=>stars(best[campaignId(i)],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[campaignId(level)];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:difficulty(g).toUpperCase()+(g.id>=20&&g.id<23?' / FOUR-FOOD BONUS':'');$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':(names[g.id]||'Easy puzzle · '+g.par+' moves');$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay();renderChallenge()}
+let total=stages.reduce((n,g,i)=>n+stars(best[campaignId(i)],g.par),0),solved=stages.filter((g,i)=>stars(best[campaignId(i)],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[campaignId(level)];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:difficulty(g).toUpperCase()+(g.id>=20&&g.id<23?' / FOUR-FOOD BONUS':'');$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':(names[g.id]||'Easy puzzle · '+g.par+' moves');$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay();renderChallenge();renderShop()}
 function act(d,fromRedo=false){if(won||!Number.isInteger(d)||d<0||d>3)return;let q=step(p,d,game());if(same(p,q)){$('#notice').textContent='Blocked. Try another direction.';return}if(!fromRedo)redoStack=[];hidePreview();clearHint();history.push([...p]);p=q;won=same(p,game().goal);if(won){recordFinish();if(mode==='campaign'){best[campaignId(level)]=Math.min(Number.isFinite(best[campaignId(level)])?best[campaignId(level)]:Infinity,history.length);write('together-best',best)}else{let old=dailyBest[day];if(!old||history.length<old.moves||(history.length===old.moves&&hints<old.hints)){dailyBest[day]={moves:history.length,hints};write('together-daily-best',dailyBest)}}}draw();persist();$('#notice').textContent='';if(won)showWin()}
 function showWin(){let n=stars(history.length,game().par);$('#notice').innerHTML=`<strong>${starText(n)} All animals fed!</strong>${hints===0?' 🏅 Hint-free!':''}`+(mode==='campaign'&&level<stages.length-1?` <button onclick="load(${level+1})">Next level →</button>`:mode==='daily'?' Your daily result is ready to share.':' You solved the collection.');$('#share-button').hidden=mode!=='daily'}
 function undo(){if(!history.length)return;resetChallengeShare();hidePreview();clearHint();redoStack.push([...p]);p=history.pop();won=false;draw();persist();$('#share-panel').hidden=true;$('#notice').textContent='Move undone.'}
@@ -245,4 +245,99 @@ function resetChallengeShare(){
   if(field){field.hidden=true;field.value='';$('#challenge-status').textContent=''}
 }
 trackChallenge();
+const themes = [
+  {id:'classic', name:'Classic', cost:0},
+  {id:'orchard', name:'Orchard', cost:80},
+  {id:'ocean', name:'Ocean', cost:130},
+  {id:'violet', name:'Starlight', cost:180}
+];
+const wallet = read('together-wallet-v1', {});
+wallet.gold ??= 0;
+wallet.claimed ??= {};
+wallet.owned ??= {classic:true};
+wallet.active ??= 'classic';
+
+function awardGold(key, amount) {
+  if (wallet.claimed[key]) return false;
+  wallet.claimed[key] = true;
+  wallet.gold += amount;
+  return true;
+}
+
+function storeWallet() {
+  write('together-wallet-v1', wallet);
+}
+
+function syncRewards() {
+  const solved = stages.filter(board => stars(best[board.id], board.par)>0);
+  const medals = stages.filter(board => Number.isFinite(records['c:'+board.id]?.bestNoHints)).length;
+  const today = todayKey();
+  const weekly = weeklyDates(today);
+  const dailyWon = Number.isFinite(dailyBest[today]?.moves);
+  const weeklyWins = weekly.filter(date => Number.isFinite(dailyBest[date]?.moves)).length;
+  let changed = false;
+  for(const board of solved) {
+    const amount = {Easy:10, Normal:15, Hard:20}[difficulty(board)];
+    if(awardGold('level:'+board.id, amount)) changed = true;
+  }
+  const goals = [
+    ['daily:'+today, 'Quest · Solve today’s puzzle', 20, Number(dailyWon), 1],
+    ['weekly:'+weekly[0], 'Quest · Solve three puzzles this week', 50, weeklyWins, 3],
+    ['five', 'Achievement · Clear five campaign levels', 40, solved.length, 5],
+    ['medals', 'Achievement · Earn five hint-free medals', 60, medals, 5],
+    ['all', 'Achievement · Clear the campaign', 100, solved.length, stages.length]
+  ];
+  for(const [key,,amount,count,total] of goals) {
+    if(count>=total && awardGold(key,amount)) changed = true;
+  }
+  if(changed) storeWallet();
+  return goals;
+}
+
+function renderShop() {
+  if(!$('#gold-balance'))return;
+  const goals = syncRewards();
+  $('body').dataset.theme = wallet.active;
+  $('#gold-balance').textContent = wallet.gold+' gold';
+  $('#gold-goals').innerHTML=goals.map(([key,name,amount,count,total]) =>
+    '<li>'+name+' · '+Math.min(count,total)+'/'+total+' · '+amount+
+    ' gold'+(wallet.claimed[key]?' ✓':'')+'</li>').join('');
+  $('#theme-options').innerHTML=themes.map(theme=>{
+    const owned=wallet.owned[theme.id];
+    const active=wallet.active===theme.id;
+    return '<button type="button" data-buy="'+theme.id+'" '+(active?'disabled':'')+
+      '><span class="theme-swatch" data-theme="'+theme.id+'" aria-hidden="true"></span><strong>'+theme.name+
+      '</strong><small>'+(active?'Equipped':owned?'Equip':'Buy · '+theme.cost+' gold')+'</small></button>';
+  }).join('');
+}
+function selectTheme(id) {
+  const theme=themes.find(item=>item.id===id);
+  if(!theme)return;
+  if(!wallet.owned[id]){
+    if(wallet.gold<theme.cost){$('#gold-status').textContent='You need '+(theme.cost-wallet.gold)+' more gold.';return}
+    wallet.gold-=theme.cost;
+    wallet.owned[id]=true;
+  }
+  wallet.active=id;
+  storeWallet();
+  renderShop();
+  $('#gold-status').textContent=theme.name+' equipped.';
+}
+function redeemGold(code) {
+  if(code.trim().toUpperCase()!=='TOGETHER50')return 'That gift code is invalid.';
+  if(!awardGold('gift:TOGETHER50',50))return 'You already redeemed this gift code.';
+  storeWallet();
+  renderShop();
+  return 'Gift redeemed · +50 gold.';
+}
+if($('#gold-balance')){
+  $('#theme-options').addEventListener('click',event=>{
+    const button=event.target.closest('[data-buy]');
+    if(button)selectTheme(button.dataset.buy);
+  });
+  $('#gold-code-form').addEventListener('submit',event=>{
+    event.preventDefault();
+    $('#gold-status').textContent=redeemGold($('#gold-code').value);
+  });
+}
 let requestedDay=new URLSearchParams(location.search).get('daily'),last=read('together-last-v1',{});if(validDay(requestedDay))playDaily(requestedDay);else if(last.mode==='daily')playDaily();else load(Math.max(0,stages.findIndex(board=>board.id===last.level)));
