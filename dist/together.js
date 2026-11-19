@@ -1,11 +1,19 @@
 const tutorial={n:4,walls:[],start:[0,5],goal:[11,15],par:2};
-const stages=[tutorial,LEVELS[0],LEVELS[3],LEVELS[4],LEVELS[2],...EXTRA_LEVELS,...BONUS];
+const originalStages=[tutorial,LEVELS[0],LEVELS[3],LEVELS[4],LEVELS[2],...EXTRA_LEVELS,...BONUS];
+const stages = [...originalStages, ...EASY_LEVELS]
+  .map((board, id) => ({...board, id}))
+  .sort((a,b) => a.par-b.par || a.id-b.id);
+function campaignId(index){return stages[index].id}
+function difficulty(board){return board.par<=10?'Easy':board.par<=30?'Normal':'Hard'}
 function step(pos,d,g){let [dx,dy]=[[0,-1],[1,0],[0,1],[-1,0]][d],r=[...pos];let order=r.map((_,i)=>i).sort((a,b)=>(r[b]%g.n*dx+Math.floor(r[b]/g.n)*dy)-(r[a]%g.n*dx+Math.floor(r[a]/g.n)*dy));for(let i of order)while(true){let x=r[i]%g.n+dx,y=Math.floor(r[i]/g.n)+dy,q=y*g.n+x;if(x<0||y<0||x>=g.n||y>=g.n||g.walls.includes(q)||r.includes(q))break;r[i]=q}return r}
 function same(a,b){return a.join(',')===b.join(',')}
 function solve(start,g){let queue=[start],seen=new Set([start.join(',')]),prev=new Map(),goal=null;for(let h=0;h<queue.length;h++){let s=queue[h];if(same(s,g.goal)){goal=s.join(',');break}for(let d=0;d<4;d++){let t=step(s,d,g),k=t.join(',');if(!seen.has(k)){seen.add(k);prev.set(k,[s.join(','),d]);queue.push(t)}}}if(goal===null)return null;let path=[];while(prev.has(goal)){let [old,d]=prev.get(goal);path.push(d);goal=old}return path.reverse()}
 const $=s=>document.querySelector(s),names=['Learn in two moves','A small problem','The long way around','No easy way home','Everything is connected','Crossed paths','The holding pattern','Thread the needle','A little cooperation','Wrong turn, right idea','The waiting room','Perfect interference','Three-body problem','The narrow escape','Almost together','The last detour','Tangled intentions','The long goodbye','A beautiful mistake','One final wrong turn','Dinner for four','Bone to pick','Full house'];
-function read(key,fallback){try{let v=JSON.parse(localStorage.getItem(key));return v&&typeof v==='object'&&!Array.isArray(v)?v:fallback}catch{return fallback}}
-let storageOK=true;function write(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch{storageOK=false}}
+function windowStore(){
+  return globalThis.togetherAccountStore || localStorage;
+}
+function read(key,fallback){try{let v=JSON.parse((windowStore()).getItem(key));return v&&typeof v==='object'&&!Array.isArray(v)?v:fallback}catch{return fallback}}
+let storageOK=true;function write(key,value){try{(windowStore()).setItem(key,JSON.stringify(value))}catch{storageOK=false}}
 let best=read('together-best',{}),dailyBest=read('together-daily-best',{}),saves=read('together-saves-v1',{}),level=0,mode='campaign',day='',p=[],history=[],won=false,hints=0;
 let redoStack=[];
 let records=read('together-records-v1',{}),dailyCompletions=read('together-streak-days-v1',{}),recorded=false,hintContext=null;
@@ -13,31 +21,63 @@ function dateSerial(date){return Math.floor(Date.parse(date+'T00:00:00Z')/864000
 function streakStats(today=todayKey()){let dates=Object.keys(dailyCompletions).filter(d=>validDay(d)&&dailyCompletions[d]===true&&d<=today).map(dateSerial).sort((a,b)=>a-b),longest=0,run=0,previous=null;for(let d of dates){run=d===previous+1?run+1:1;longest=Math.max(longest,run);previous=d}let set=new Set(dates),d=dateSerial(today),current=0;if(!set.has(d))d--;while(set.has(d)){current++;d--}return{current,longest,total:dates.length}}
 function recordFinish(){let key=saveKey(),r=records[key]||{};if(!recorded){r.completions=(r.completions||0)+1;if(hints===0)r.noHintCompletions=(r.noHintCompletions||0)+1;recorded=true}if(hints===0)r.bestNoHints=Math.min(Number.isFinite(r.bestNoHints)?r.bestNoHints:Infinity,history.length);records[key]=r;write('together-records-v1',records);if(mode==='daily'&&day===todayKey()){dailyCompletions[day]=true;write('together-streak-days-v1',dailyCompletions)}}
 function clearHint(){hintContext=null;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';placePieces()}
-function drawRecords(){let r=records[saveKey()]||{},moves=mode==='daily'?dailyBest[day]?.moves:best[level],medal=Number.isFinite(r.bestNoHints),s=streakStats();$('#personal-best').textContent='Best moves: '+(Number.isFinite(moves)?moves:'—');$('#hint-free-best').textContent='Best without hints: '+(medal?r.bestNoHints+' moves':'—');$('#medal').textContent=medal?'🏅 Hint-free medal earned':'◇ Hint-free medal to earn';$('#completion-record').textContent=`${r.completions||0} recorded finishes · ${r.noHintCompletions||0} without hints`;$('#run-status').textContent=hints===0?'Hint-free run · medal available':'Assisted run · restart for a hint-free medal';$('#hint-button').textContent='Gentle hint';$('#streak').textContent=`${s.current} day streak · best ${s.longest}`;$('#streak-note').textContent=`${s.total} daily challenges completed on their day. Only today’s puzzle extends your streak.`;let medals=stages.filter((_,i)=>Number.isFinite(records['c:'+i]?.bestNoHints)).length;$('#medal-total').textContent=`${medals} / ${stages.length} hint-free medals`;}
+function drawRecords(){let r=records[saveKey()]||{},moves=mode==='daily'?dailyBest[day]?.moves:best[campaignId(level)],medal=Number.isFinite(r.bestNoHints),s=streakStats();$('#personal-best').textContent='Best moves: '+(Number.isFinite(moves)?moves:'—');$('#hint-free-best').textContent='Best without hints: '+(medal?r.bestNoHints+' moves':'—');$('#medal').textContent=medal?'🏅 Hint-free medal earned':'◇ Hint-free medal to earn';$('#completion-record').textContent=`${r.completions||0} recorded finishes · ${r.noHintCompletions||0} without hints`;$('#run-status').textContent=hints===0?'Hint-free run · medal available':'Assisted run · restart for a hint-free medal';$('#hint-button').textContent='Gentle hint';$('#streak').textContent=`${s.current} day streak · best ${s.longest}`;$('#streak-note').textContent=`${s.total} daily challenges completed on their day. Only today’s puzzle extends your streak.`;let medals=stages.filter((_,i)=>Number.isFinite(records['c:'+campaignId(i)]?.bestNoHints)).length;$('#medal-total').textContent=`${medals} / ${stages.length} hint-free medals`;}
 function gentleChoice(pos,d,g){let next=step(pos,d,g),changed=pos.map((v,i)=>i).filter(i=>vChanged(i));function vChanged(i){return pos[i]!==next[i]}let distance=(v,t)=>Math.abs(v%g.n-t%g.n)+Math.abs(Math.floor(v/g.n)-Math.floor(t/g.n));return changed.sort((a,b)=>{let value=i=>(next[i]===g.goal[i]?100:0)+distance(pos[i],g.goal[i])-distance(next[i],g.goal[i]);return value(b)-value(a)})[0]}
-function hint(){if(won)return;if(hintContext&&hintContext.key===saveKey()&&same(hintContext.position,p))return;let path=solve(p,game());if(!path||!path.length){$('#hint-message').textContent=path===null?'No route from here. Undo or restart to find another path.':'All animals are fed.';return}let piece=gentleChoice(p,path[0],game());hintContext={key:saveKey(),position:[...p],direction:path[0],piece,revealed:false};hints++;persist();draw();$('#hint-message').textContent=`Focus on the ${pairAt(piece).food.toLowerCase()} and its ${pairAt(piece).animal.toLowerCase()}. Think about how walls and other foods can stop it. Want a direction? Reveal the next move below.`;$('#reveal-hint').hidden=false;$('#notice').textContent='Gentle hint used. You can still earn stars.'}
+function hint(){if(won)return;if(hintContext&&hintContext.key===saveKey()&&same(hintContext.position,p))return;let path=solve(p,game());if(!path||!path.length){$('#hint-message').textContent=path===null?'No route from here. Undo or restart to find another path.':'All pieces are home.';return}let piece=gentleChoice(p,path[0],game());hintContext={key:saveKey(),position:[...p],direction:path[0],piece,revealed:false};hints++;persist();draw();$('#hint-message').textContent=`Focus on the ${pairAt(piece).food.toLowerCase()} and its ${pairAt(piece).animal.toLowerCase()}. Think about how walls and other pieces can stop it. Want a direction? Reveal the next move below.`;$('#reveal-hint').hidden=false;$('#notice').textContent='Gentle hint used. You can still earn stars.'}
 function revealHint(){if(won||!hintContext||hintContext.key!==saveKey()||!same(hintContext.position,p))return;if(!hintContext.revealed){hintContext.revealed=true;hints++;persist()}$('#hint-message').textContent='Try '+['↑ up','→ right','↓ down','← left'][hintContext.direction]+'. All pieces slide together.';draw();$('#reveal-hint').hidden=true}
 
 function todayKey(now=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)}
 function validDay(v){return /^\d{4}-\d{2}-\d{2}$/.test(v||'')&&!isNaN(Date.parse(v))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v}
 function dailyBoard(date){let serial=Math.floor(Date.parse(date+'T00:00:00Z')/86400000);return DAILY_LEVELS[((serial%DAILY_LEVELS.length)+DAILY_LEVELS.length)%DAILY_LEVELS.length]}
 function game(){return mode==='daily'?dailyBoard(day):stages[level]}
-function saveKey(){return mode==='daily'?(challengeRun&&day===incoming.day?'challenge:'+challengeToken:'d:'+day):'c:'+level}
+function saveKey(){return mode==='daily'?(challengeRun&&day===incoming.day?'challenge:'+challengeToken:'d:'+day):'c:'+campaignId(level)}
 function stars(moves,par){return !Number.isFinite(moves)||moves<par?0:moves===par?3:moves<=par+Math.max(2,Math.ceil(par*.2))?2:1}
 function starText(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
 function validPosition(v,g){return Array.isArray(v)&&v.length===g.start.length&&new Set(v).size===v.length&&v.every(x=>Number.isInteger(x)&&x>=0&&x<g.n*g.n&&!g.walls.includes(x))}
 function validSave(s,g){if(!s||!validPosition(s.p,g)||!Array.isArray(s.history)||s.history.length>10000)return false;let sequence=[...s.history,s.p];if(!sequence.every(v=>validPosition(v,g)))return false;if(!same(sequence[0],g.start))return false;for(let i=1;i<sequence.length;i++){if(!validPosition(sequence[i],g)||!Array.from({length:4},(_,d)=>step(sequence[i-1],d,g)).some(t=>same(t,sequence[i])))return false}return true}
-function persist(){saves[saveKey()]={p:[...p],history:history.map(x=>[...x]),redoStack,hints,recorded};write('together-saves-v1',saves);write('together-last-v1',{mode,level,day});$('#save-note').textContent=storageOK?'Progress saved on this browser.':'Browser storage is unavailable. Keep this tab open to retain progress.'}
+function persist(){saves[saveKey()]={p:[...p],history:history.map(x=>[...x]),redoStack,hints,recorded};write('together-saves-v1',saves);write('together-last-v1',{mode,level:campaignId(level),day});$('#save-note').textContent=storageOK?'Progress saved on this browser.':'Browser storage is unavailable. Keep this tab open to retain progress.'}
 function clearDailyLink(){challengeRun=false;if(typeof window!=='undefined'&&new URLSearchParams(location.search).has('daily')){let url=new URL(location.href);url.searchParams.delete('daily');url.searchParams.delete('challenge');window.history.replaceState(null,'',url)}}
 function load(i,reset=false){if(!Number.isInteger(i)||i<0||i>=stages.length)return;clearDailyLink();mode='campaign';level=i;openBoard(reset)}
 function playDaily(date=todayKey(),reset=false){if(arguments.length===0)clearDailyLink();mode='daily';day=validDay(date)?date:todayKey();openBoard(reset)}
 function restart(){openBoard(true)}
-function openBoard(reset=false){resetChallengeShare();let g=game(),s=saves[saveKey()];if(!reset&&validSave(s,g)){p=[...s.p];history=s.history.map(x=>[...x]);hints=Number.isInteger(s.hints)&&s.hints>=0?s.hints:1;recorded=s.recorded===true}else{p=[...g.start];history=[];hints=0;recorded=false}redoStack=!reset&&Array.isArray(s?.redoStack)&&validSave({p:s.redoStack.at(0),history:[...history,p,...s.redoStack.slice(1).reverse()]},g)?s.redoStack:[];hidePreview();hintContext=null;won=same(p,g.goal);if(won)recordFinish();buildBoard();draw();persist();$('#share-panel').hidden=true;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';if(won)showWin();else $('#notice').textContent=history.length?'Resumed exactly where you left off.':mode==='daily'?'Same puzzle for everyone. New puzzle at midnight Bangkok time.':level===0?'Try → then ↓. Every piece moves.':''}
-function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').innerHTML=pairs.map(v=>`<div class="food-pair ${v.color}"><span class="legend-icons">${foodIcon(v.foodIcon)}<span class="pair-arrow">→</span>${foodIcon(v.animalIcon)}</span><span class="pair-label">${v.food} → ${v.animal}</span></div>`).join('');$('#board').style.gridTemplateColumns=`repeat(${g.n},1fr)`;$('#board').innerHTML=Array.from({length:g.n*g.n},(_,j)=>{let t=g.goal.indexOf(j),v=pairs[t];return `<div class="tile ${g.walls.includes(j)?'wall':''}" data-cell="${j}"${v?` role="img" aria-label="${v.animal} target for ${v.food.toLowerCase()}"`:''}>${v?`<span class="target animal-target ${v.color}">${foodIcon(v.animalIcon)}<span class="icon-label">${v.animal}</span></span>`:''}</div>`}).join('')+`<div class="piece-layer" style="--n:${g.n}">${p.map((_,i)=>{let v=pairs[i];return `<span class="moving-piece ${v.color}" data-piece="${i}" role="img" aria-label="${v.food}, feed the ${v.animal.toLowerCase()}">${foodIcon(v.foodIcon)}<span class="icon-label">${v.food}</span></span>`}).join('')}</div><div id="preview-layer" aria-hidden="true" style="--n:${g.n}"></div>`;placePieces();}
-function placePieces(){let g=game();$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{el.classList.toggle('hint-focus',hintContext?.piece===i);el.classList.toggle('fed',g.goal[i]===p[i]);el.style.transform=`translate(${(p[i]%g.n)*100}%,${Math.floor(p[i]/g.n)*100}%) translate(${(p[i]%g.n)*5}px,${Math.floor(p[i]/g.n)*5}px)`});$('#board').querySelectorAll('.tile').forEach((el,j)=>{let i=p.indexOf(j);el.classList.toggle('matched',i>=0&&g.goal[i]===j);el.classList.toggle('hint-target',hintContext!=null&&g.goal[hintContext.piece]===j)})}
-function draw(){if($('#redo'))$('#redo').disabled=!redoStack.length;let g=game();$('#levels').innerHTML=stages.map((s,i)=>{let n=stars(best[i],s.par);return `<button class="${mode==='campaign'&&i===level?'selected':''}" onclick="load(${i})" aria-label="Level ${i+1}, ${n} stars${Number.isFinite(records['c:'+i]?.bestNoHints)?', hint-free medal':''}" aria-pressed="${mode==='campaign'&&i===level}"><span>${i+1}${Number.isFinite(records['c:'+i]?.bestNoHints)?' 🏅':''}</span><small>${starText(n)}</small></button>`}).join('');let total=stages.reduce((n,g,i)=>n+stars(best[i],g.par),0),solved=stages.filter((g,i)=>stars(best[i],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[level];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:(['THE BASICS','HARD','VERY HARD','EXPERT','BRUTAL'][level]||(level>=20?'FOUR-FOOD BONUS':'BRUTAL / CHAPTER '+Math.ceil((level+1)/5)));$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':names[level];$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay();renderChallenge()}
-function act(d,fromRedo=false){if(won||!Number.isInteger(d)||d<0||d>3)return;let q=step(p,d,game());if(same(p,q)){$('#notice').textContent='Blocked. Try another direction.';return}if(!fromRedo)redoStack=[];hidePreview();clearHint();history.push([...p]);p=q;won=same(p,game().goal);if(won){recordFinish();if(mode==='campaign'){best[level]=Math.min(Number.isFinite(best[level])?best[level]:Infinity,history.length);write('together-best',best)}else{let old=dailyBest[day];if(!old||history.length<old.moves||(history.length===old.moves&&hints<old.hints)){dailyBest[day]={moves:history.length,hints};write('together-daily-best',dailyBest)}}}draw();persist();$('#notice').textContent='';if(won)showWin()}
-function showWin(){let n=stars(history.length,game().par);$('#notice').innerHTML=`<strong>${starText(n)} All animals fed!</strong>${hints===0?' 🏅 Hint-free!':''}`+(mode==='campaign'&&level<stages.length-1?` <button onclick="load(${level+1})">Next level →</button>`:mode==='daily'?' Your daily result is ready to share.':' You solved the collection.');$('#share-button').hidden=mode!=='daily'}
+function openBoard(reset=false){resetChallengeShare();let g=game(),s=saves[saveKey()];if(!reset&&validSave(s,g)){p=[...s.p];history=s.history.map(x=>[...x]);hints=Number.isInteger(s.hints)&&s.hints>=0?s.hints:1;recorded=s.recorded===true}else{p=[...g.start];history=[];hints=0;recorded=false}redoStack=!reset&&Array.isArray(s?.redoStack)&&validSave({p:s.redoStack.at(0),history:[...history,p,...s.redoStack.slice(1).reverse()]},g)?s.redoStack:[];hidePreview();hintContext=null;won=same(p,g.goal);if(won)recordFinish();buildBoard();draw();persist();$('#share-panel').hidden=true;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';if(won)showWin();else $('#notice').textContent=history.length?'Resumed exactly where you left off.':mode==='daily'?'Same puzzle for everyone. New puzzle at midnight Bangkok time.':g.id===0?'Try → then ↓. Every piece moves.':''}
+function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').innerHTML=pairs.map(v=>`<div class="food-pair ${v.color}"><span class="legend-icons">${pieceArt(v.foodIcon)}<span class="pair-arrow">→</span>${pieceArt(v.animalIcon)}</span><span class="pair-label">${v.food} → ${v.animal}</span></div>`).join('');$('#board').style.gridTemplateColumns=`repeat(${g.n},1fr)`;$('#board').innerHTML=Array.from({length:g.n*g.n},(_,j)=>{let t=g.goal.indexOf(j),v=pairs[t];return `<div class="tile ${g.walls.includes(j)?'wall':''}" data-cell="${j}"${v?` role="img" aria-label="${v.animal} target for ${v.food.toLowerCase()}"`:''}>${v?`<span class="target animal-target ${v.color}">${pieceArt(v.animalIcon)}<span class="icon-label">${v.animal}</span></span>`:''}</div>`}).join('')+`<div class="piece-layer" style="--n:${g.n}">${p.map((_,i)=>{let v=pairs[i];return `<span class="moving-piece ${v.color}" data-piece="${i}" role="img" aria-label="${v.food}, match the ${v.animal.toLowerCase()}">${pieceArt(v.foodIcon)}<span class="icon-label">${v.food}</span></span>`}).join('')}</div><div id="preview-layer" aria-hidden="true" style="--n:${g.n}"></div>`;placePieces();}
+function showFoodOnTarget(piece, cell){
+  if(!piece.isConnected)return;
+  piece.classList.add('on-target');
+  piece.dataset.match = game().goal[Number(piece.dataset.piece)] === cell ? 'correct' : 'wrong';
+  const tile=$('#board').querySelector('[data-cell="'+cell+'"]');
+  if(tile)tile.classList.add('shared-target');
+}
+function placePieces(){let g=game();$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{
+  const previous=el.dataset.position;
+  if(previous!==undefined&&previous!==String(p[i])){
+    $('#board').querySelector('[data-cell="'+previous+'"]')?.classList.remove('shared-target');
+  }
+});$('#board').querySelectorAll('.moving-piece').forEach((el,i)=>{el.classList.toggle('hint-focus',hintContext?.piece===i);const destination=p[i];
+const previous=el.dataset.position;
+const occupied=g.goal.includes(destination);
+if(previous!==String(destination)){
+  clearTimeout(el.badgeTimer);
+  el.classList.remove('on-target');
+  el.dataset.position=destination;
+  if(occupied){
+    if(previous===undefined || matchMedia('(prefers-reduced-motion: reduce)').matches){
+      showFoodOnTarget(el,destination);
+    }else{
+      el.badgeTimer=setTimeout(()=>showFoodOnTarget(el,destination),240);
+    }
+  }
+}
+el.style.transform=`translate(${(p[i]%g.n)*100}%,${Math.floor(p[i]/g.n)*100}%) translate(${(p[i]%g.n)*5}px,${Math.floor(p[i]/g.n)*5}px)`});$('#board').querySelectorAll('.tile').forEach((el,j)=>{let i=p.indexOf(j);el.classList.toggle('matched',i>=0&&g.goal[i]===j);el.classList.toggle('hint-target',hintContext!=null&&g.goal[hintContext.piece]===j)})}
+function draw(){if($('#redo'))$('#redo').disabled=!redoStack.length;let g=game();const levelButtons=stages.map((s,i)=>{let n=stars(best[campaignId(i)],s.par);return `<button class="${mode==='campaign'&&i===level?'selected':''}" onclick="load(${i})" aria-label="Level ${i+1}, ${n} stars${Number.isFinite(records['c:'+campaignId(i)]?.bestNoHints)?', hint-free medal':''}" aria-pressed="${mode==='campaign'&&i===level}"><span>${i+1}${Number.isFinite(records['c:'+campaignId(i)]?.bestNoHints)?' 🏅':''}</span><small>${starText(n)}</small></button>`});
+$('#levels').innerHTML=['Easy','Normal','Hard'].map(group=>{
+  const buttons=levelButtons.filter((_,i)=>difficulty(stages[i])===group);
+  return `<section class="level-group"><h3>${group}</h3><div class="level-grid">${buttons.join('')}</div></section>`;
+}).join('');
+let total=stages.reduce((n,g,i)=>n+stars(best[campaignId(i)],g.par),0),solved=stages.filter((g,i)=>stars(best[campaignId(i)],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[campaignId(level)];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:difficulty(g).toUpperCase()+(g.id>=20&&g.id<23?' / FOUR-FOOD BONUS':'');$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':(names[g.id]||'Easy puzzle · '+g.par+' moves');$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay();renderChallenge();renderShop()}
+function act(d,fromRedo=false){if(won||!Number.isInteger(d)||d<0||d>3)return;let q=step(p,d,game());if(same(p,q)){$('#notice').textContent='Blocked. Try another direction.';return}if(!fromRedo)redoStack=[];hidePreview();clearHint();history.push([...p]);p=q;won=same(p,game().goal);if(won){recordFinish();if(mode==='campaign'){best[campaignId(level)]=Math.min(Number.isFinite(best[campaignId(level)])?best[campaignId(level)]:Infinity,history.length);write('together-best',best)}else{let old=dailyBest[day];if(!old||history.length<old.moves||(history.length===old.moves&&hints<old.hints)){dailyBest[day]={moves:history.length,hints};write('together-daily-best',dailyBest)}}}draw();persist();$('#notice').textContent='';if(won)showWin()}
+function showWin(){let n=stars(history.length,game().par);$('#notice').innerHTML=`<strong>${starText(n)} Puzzle solved!</strong>${hints===0?' 🏅 Hint-free!':''}`+(mode==='campaign'&&level<stages.length-1?` <button onclick="load(${level+1})">Next level →</button>`:mode==='daily'?' Your daily result is ready to share.':' You solved the collection.');$('#share-button').hidden=mode!=='daily'}
 function undo(){if(!history.length)return;resetChallengeShare();hidePreview();clearHint();redoStack.push([...p]);p=history.pop();won=false;draw();persist();$('#share-panel').hidden=true;$('#notice').textContent='Move undone.'}
 function shareText(){return `Together · Daily ${day}\n${starText(stars(history.length,game().par))} · ${history.length} moves\n${hints===0?'🏅 Hint-free':hints+' hint'+(hints===1?'':'s')+' used'} · No spoilers\n${location.origin}${location.pathname}?daily=${day}`}
 async function shareResult(){if(mode!=='daily'||!won)return;let text=shareText();$('#share-panel').hidden=false;$('#share-text').value=text;try{await navigator.clipboard.writeText(text);$('#share-status').textContent='Result copied! Paste it wherever you like.'}catch{$('#share-status').textContent='Select and copy your result below.';$('#share-text').focus();$('#share-text').select()}}
@@ -61,7 +101,7 @@ function preview(direction){
   const g=game(), destinations=step(p,direction,g);
   layer.innerHTML=destinations.map((cell,i)=>{
     const pair=pairAt(i);
-    return `<span class="preview-piece ${pair.color}" style="grid-area:${Math.floor(cell/g.n)+1}/${cell%g.n+1}">${foodIcon(pair.foodIcon)}</span>`;
+    return `<span class="preview-piece ${pair.color}" style="grid-area:${Math.floor(cell/g.n)+1}/${cell%g.n+1}">${pieceArt(pair.foodIcon)}</span>`;
   }).join('');
 }
 function setupPress(button,direction){
@@ -89,14 +129,14 @@ function weeklyDates(today) {
 }
 
 function nextChallenge() {
-  const unfinished = stages.findIndex((board, i) => !stars(best[i], board.par));
+  const unfinished = stages.findIndex((board, i) => !stars(best[campaignId(i)], board.par));
   if (unfinished >= 0) {
-    const resume = saves['c:' + unfinished]?.history?.length > 0;
+    const resume = saves['c:' + campaignId(unfinished)]?.history?.length > 0;
     return {index: unfinished, label: (resume ? 'Resume' : 'Play') + ' level ' + (unfinished + 1)};
   }
-  const medal = stages.findIndex((_, i) => !Number.isFinite(records['c:' + i]?.bestNoHints));
+  const medal = stages.findIndex((_, i) => !Number.isFinite(records['c:' + campaignId(i)]?.bestNoHints));
   if (medal >= 0) return {index: medal, label: 'Try level ' + (medal + 1) + ' without hints'};
-  const improve = stages.findIndex((board, i) => stars(best[i], board.par) < 3);
+  const improve = stages.findIndex((board, i) => stars(best[campaignId(i)], board.par) < 3);
   if (improve >= 0) return {index: improve, label: 'Go for three stars on level ' + (improve + 1)};
   return null;
 }
@@ -142,7 +182,7 @@ if ($('#return-play')) {
   });
   $('#next-challenge').addEventListener('click', event => {
     const index = Number(event.currentTarget.dataset.level);
-    const saved = saves['c:' + index];
+    const saved = saves['c:' + campaignId(index)];
     load(index, Array.isArray(saved?.p) && same(saved.p, stages[index].goal));
     $('#board').scrollIntoView({block:'nearest'});
   });
@@ -209,4 +249,149 @@ function resetChallengeShare(){
   if(field){field.hidden=true;field.value='';$('#challenge-status').textContent=''}
 }
 trackChallenge();
-let requestedDay=new URLSearchParams(location.search).get('daily'),last=read('together-last-v1',{});if(validDay(requestedDay))playDaily(requestedDay);else if(last.mode==='daily')playDaily();else load(Number.isInteger(last.level)&&last.level>=0&&last.level<stages.length?last.level:0);
+const themes = [
+  {id:'classic', name:'Classic board', cost:0},
+  {id:'orchard', name:'Orchard', cost:80},
+  {id:'ocean', name:'Ocean', cost:130},
+  {id:'violet', name:'Starlight', cost:180}
+];
+const wallet = read('together-wallet-v1', {});
+wallet.gold ??= 0;
+wallet.claimed ??= {};
+wallet.owned ??= {classic:true};
+wallet.active ??= 'classic';
+wallet.pieces ??= 'geometry';
+wallet.pieceOwned ??= {geometry:true};
+
+const pieceStyles = [
+  {id:'geometry', name:'Classic Geometry', cost:0, sample:['●','◯']},
+  {id:'farm', name:'Food & Animals', cost:60, sample:['carrot','rabbit']},
+  {id:'emoji', name:'Emoji Buddies', cost:100, sample:['banana','monkey']},
+  {id:'woodland', name:'Woodland', cost:90, sample:['🍯','🐻']},
+  {id:'barnyard', name:'Barnyard', cost:110, sample:['🌽','🐔']},
+  {id:'tropical', name:'Tropical', cost:140, sample:['🎋','🐼']}
+];
+
+
+function awardGold(key, amount) {
+  if (wallet.claimed[key]) return false;
+  wallet.claimed[key] = true;
+  wallet.gold += amount;
+  return true;
+}
+
+function storeWallet() {
+  write('together-wallet-v1', wallet);
+}
+
+function syncRewards() {
+  const solved = stages.filter(board => stars(best[board.id], board.par)>0);
+  const medals = stages.filter(board => Number.isFinite(records['c:'+board.id]?.bestNoHints)).length;
+  const today = todayKey();
+  const weekly = weeklyDates(today);
+  const dailyWon = Number.isFinite(dailyBest[today]?.moves);
+  const weeklyWins = weekly.filter(date => Number.isFinite(dailyBest[date]?.moves)).length;
+  let changed = false;
+  for(const board of solved) {
+    const amount = {Easy:10, Normal:15, Hard:20}[difficulty(board)];
+    if(awardGold('level:'+board.id, amount)) changed = true;
+  }
+  const goals = [
+    ['daily:'+today, 'Quest · Solve today’s puzzle', 20, Number(dailyWon), 1],
+    ['weekly:'+weekly[0], 'Quest · Solve three puzzles this week', 50, weeklyWins, 3],
+    ['five', 'Achievement · Clear five campaign levels', 40, solved.length, 5],
+    ['medals', 'Achievement · Earn five hint-free medals', 60, medals, 5],
+    ['all', 'Achievement · Clear the campaign', 100, solved.length, stages.length]
+  ];
+  for(const [key,,amount,count,total] of goals) {
+    if(count>=total && awardGold(key,amount)) changed = true;
+  }
+  if(changed) storeWallet();
+  return goals;
+}
+
+function renderShop() {
+  if(!$('#gold-balance'))return;
+  const goals = syncRewards();
+  $('body').dataset.theme = wallet.active;
+  $('body').dataset.pieces = wallet.pieces;
+  $('#piece-options').innerHTML=pieceStyles.map(style=>{
+    const active=wallet.pieces===style.id;
+    const action=active?'Equipped':wallet.pieceOwned[style.id]?'Equip':'Buy · '+style.cost+' gold';
+    const preview=style.sample.map(icon=>pieceArt(icon,style.id)).join('<span aria-hidden="true">→</span>');
+    return '<button type="button" data-piece-style="'+style.id+'" '+(active?'disabled':'')+
+      '><span class="piece-swatch">'+preview+'</span><strong>'+style.name+'</strong><small>'+action+'</small></button>';
+  }).join('');
+  $('#gold-balance').textContent = wallet.gold+' gold';
+  $('#gold-goals').innerHTML=goals.map(([key,name,amount,count,total]) =>
+    '<li>'+name+' · '+Math.min(count,total)+'/'+total+' · '+amount+
+    ' gold'+(wallet.claimed[key]?' ✓':'')+'</li>').join('');
+  $('#theme-options').innerHTML=themes.map(theme=>{
+    const owned=wallet.owned[theme.id];
+    const active=wallet.active===theme.id;
+    return '<button type="button" data-buy="'+theme.id+'" '+(active?'disabled':'')+
+      '><span class="theme-swatch" data-theme="'+theme.id+'" aria-hidden="true"></span><strong>'+theme.name+
+      '</strong><small>'+(active?'Equipped':owned?'Equip':'Buy · '+theme.cost+' gold')+'</small></button>';
+  }).join('');
+}
+function selectTheme(id) {
+  const theme=themes.find(item=>item.id===id);
+  if(!theme)return;
+  if(!wallet.owned[id]){
+    if(wallet.gold<theme.cost){$('#gold-status').textContent='You need '+(theme.cost-wallet.gold)+' more gold.';return}
+    wallet.gold-=theme.cost;
+    wallet.owned[id]=true;
+  }
+  wallet.active=id;
+  storeWallet();
+  renderShop();
+  $('#gold-status').textContent=theme.name+' equipped.';
+}
+function selectPieceStyle(id){
+  const style=pieceStyles.find(item=>item.id===id);
+  if(!style)return;
+  if(!wallet.pieceOwned[id]){
+    if(wallet.gold<style.cost){
+      $('#gold-status').textContent='You need '+(style.cost-wallet.gold)+' more gold.';
+      return;
+    }
+    wallet.gold-=style.cost;
+    wallet.pieceOwned[id]=true;
+  }
+  wallet.pieces=id;
+  storeWallet();
+  buildBoard();
+  renderShop();
+  $('#gold-status').textContent=style.name+' equipped.';
+}
+const giftCodes = new Map([
+  ['TOGETHER50', 50],
+  ['PUZZLE25', 25],
+  ['TEAMPLAY75', 75],
+  ['GOLDEN100', 100]
+]);
+
+function redeemGold(code) {
+  const canonical = code.trim().toUpperCase();
+  const amount = giftCodes.get(canonical);
+  if (amount === undefined) return 'That gift code is invalid.';
+  if (!awardGold('gift:' + canonical, amount)) return 'You already redeemed this gift code.';
+  storeWallet();
+  renderShop();
+  return 'Gift redeemed · +' + amount + ' gold.';
+}
+if($('#gold-balance')){
+  $('#piece-options').addEventListener('click',event=>{
+    const button=event.target.closest('[data-piece-style]');
+    if(button)selectPieceStyle(button.dataset.pieceStyle);
+  });
+  $('#theme-options').addEventListener('click',event=>{
+    const button=event.target.closest('[data-buy]');
+    if(button)selectTheme(button.dataset.buy);
+  });
+  $('#gold-code-form').addEventListener('submit',event=>{
+    event.preventDefault();
+    $('#gold-status').textContent=redeemGold($('#gold-code').value);
+  });
+}
+let requestedDay=new URLSearchParams(location.search).get('daily'),last=read('together-last-v1',{});if(validDay(requestedDay))playDaily(requestedDay);else if(last.mode==='daily')playDaily();else load(Math.max(0,stages.findIndex(board=>board.id===last.level)));
