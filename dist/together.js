@@ -42,6 +42,7 @@ function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').i
 function showFoodOnTarget(piece, cell){
   if(!piece.isConnected)return;
   piece.classList.add('on-target');
+  piece.dataset.match = game().goal[Number(piece.dataset.piece)] === cell ? 'correct' : 'wrong';
   const tile=$('#board').querySelector('[data-cell="'+cell+'"]');
   if(tile)tile.classList.add('shared-target');
 }
