@@ -263,7 +263,10 @@ wallet.pieceOwned ??= {geometry:true};
 const pieceStyles = [
   {id:'geometry', name:'Classic Geometry', cost:0, sample:['●','◯']},
   {id:'farm', name:'Food & Animals', cost:60, sample:['carrot','rabbit']},
-  {id:'emoji', name:'Emoji Buddies', cost:100, sample:['banana','monkey']}
+  {id:'emoji', name:'Emoji Buddies', cost:100, sample:['banana','monkey']},
+  {id:'woodland', name:'Woodland', cost:90, sample:['🍯','🐻']},
+  {id:'barnyard', name:'Barnyard', cost:110, sample:['🌽','🐔']},
+  {id:'tropical', name:'Tropical', cost:140, sample:['🎋','🐼']}
 ];
 
 

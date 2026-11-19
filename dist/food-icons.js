@@ -4,8 +4,30 @@ const FOOD_PAIRS=[
  {food:'Bone',animal:'Dog',color:'white',foodIcon:'bone',animalIcon:'dog'},
  {food:'Fish',animal:'Cat',color:'blue',foodIcon:'fish',animalIcon:'cat'}
 ];
+const ANIMAL_SETS = {
+  woodland: [
+    {food:'Honey', animal:'Bear', color:'orange', foodIcon:'🍯', animalIcon:'🐻'},
+    {food:'Chestnut', animal:'Squirrel', color:'yellow', foodIcon:'🌰', animalIcon:'🐿️'},
+    {food:'Apple', animal:'Deer', color:'red', foodIcon:'🍎', animalIcon:'🦌'},
+    {food:'Mouse', animal:'Owl', color:'blue', foodIcon:'🐭', animalIcon:'🦉'}
+  ],
+  barnyard: [
+    {food:'Corn', animal:'Chicken', color:'yellow', foodIcon:'🌽', animalIcon:'🐔'},
+    {food:'Grass', animal:'Cow', color:'green', foodIcon:'🌿', animalIcon:'🐮'},
+    {food:'Apple', animal:'Horse', color:'red', foodIcon:'🍏', animalIcon:'🐴'},
+    {food:'Pumpkin', animal:'Pig', color:'orange', foodIcon:'🎃', animalIcon:'🐷'}
+  ],
+  tropical: [
+    {food:'Bamboo', animal:'Panda', color:'green', foodIcon:'🎋', animalIcon:'🐼'},
+    {food:'Banana', animal:'Gorilla', color:'yellow', foodIcon:'🍌', animalIcon:'🦍'},
+    {food:'Peanuts', animal:'Elephant', color:'orange', foodIcon:'🥜', animalIcon:'🐘'},
+    {food:'Mango', animal:'Parrot', color:'red', foodIcon:'🥭', animalIcon:'🦜'}
+  ]
+};
+
 function pairsFor(count){
   if(wallet.pieces==='geometry')return GEOMETRY_PAIRS.slice(0,count);
+  if(ANIMAL_SETS[wallet.pieces])return ANIMAL_SETS[wallet.pieces].slice(0,count);
   if(count===3)return [FOOD_PAIRS[0],FOOD_PAIRS[1],FOOD_PAIRS[3]];
   return FOOD_PAIRS.slice(0,count);
 }

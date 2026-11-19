@@ -104,3 +104,4 @@ body[data-pieces=geometry] .white{color:#56625d}
 #board .moving-piece,#board .animal-target{container-type:normal}
 #board .moving-piece{container-type:inline-size}
 #board .moving-piece .geometry-shape,#board .animal-target .geometry-shape{width:min(46cqw,48px)}
+.moving-piece.green,.animal-target.green,.preview-piece.green,.food-pair.green{color:#40864a}
