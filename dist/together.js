@@ -20,7 +20,7 @@ function recordFinish(){let key=saveKey(),r=records[key]||{};if(!recorded){r.com
 function clearHint(){hintContext=null;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';placePieces()}
 function drawRecords(){let r=records[saveKey()]||{},moves=mode==='daily'?dailyBest[day]?.moves:best[campaignId(level)],medal=Number.isFinite(r.bestNoHints),s=streakStats();$('#personal-best').textContent='Best moves: '+(Number.isFinite(moves)?moves:'—');$('#hint-free-best').textContent='Best without hints: '+(medal?r.bestNoHints+' moves':'—');$('#medal').textContent=medal?'🏅 Hint-free medal earned':'◇ Hint-free medal to earn';$('#completion-record').textContent=`${r.completions||0} recorded finishes · ${r.noHintCompletions||0} without hints`;$('#run-status').textContent=hints===0?'Hint-free run · medal available':'Assisted run · restart for a hint-free medal';$('#hint-button').textContent='Gentle hint';$('#streak').textContent=`${s.current} day streak · best ${s.longest}`;$('#streak-note').textContent=`${s.total} daily challenges completed on their day. Only today’s puzzle extends your streak.`;let medals=stages.filter((_,i)=>Number.isFinite(records['c:'+campaignId(i)]?.bestNoHints)).length;$('#medal-total').textContent=`${medals} / ${stages.length} hint-free medals`;}
 function gentleChoice(pos,d,g){let next=step(pos,d,g),changed=pos.map((v,i)=>i).filter(i=>vChanged(i));function vChanged(i){return pos[i]!==next[i]}let distance=(v,t)=>Math.abs(v%g.n-t%g.n)+Math.abs(Math.floor(v/g.n)-Math.floor(t/g.n));return changed.sort((a,b)=>{let value=i=>(next[i]===g.goal[i]?100:0)+distance(pos[i],g.goal[i])-distance(next[i],g.goal[i]);return value(b)-value(a)})[0]}
-function hint(){if(won)return;if(hintContext&&hintContext.key===saveKey()&&same(hintContext.position,p))return;let path=solve(p,game());if(!path||!path.length){$('#hint-message').textContent=path===null?'No route from here. Undo or restart to find another path.':'All animals are fed.';return}let piece=gentleChoice(p,path[0],game());hintContext={key:saveKey(),position:[...p],direction:path[0],piece,revealed:false};hints++;persist();draw();$('#hint-message').textContent=`Focus on the ${pairAt(piece).food.toLowerCase()} and its ${pairAt(piece).animal.toLowerCase()}. Think about how walls and other foods can stop it. Want a direction? Reveal the next move below.`;$('#reveal-hint').hidden=false;$('#notice').textContent='Gentle hint used. You can still earn stars.'}
+function hint(){if(won)return;if(hintContext&&hintContext.key===saveKey()&&same(hintContext.position,p))return;let path=solve(p,game());if(!path||!path.length){$('#hint-message').textContent=path===null?'No route from here. Undo or restart to find another path.':'All pieces are home.';return}let piece=gentleChoice(p,path[0],game());hintContext={key:saveKey(),position:[...p],direction:path[0],piece,revealed:false};hints++;persist();draw();$('#hint-message').textContent=`Focus on the ${pairAt(piece).food.toLowerCase()} and its ${pairAt(piece).animal.toLowerCase()}. Think about how walls and other pieces can stop it. Want a direction? Reveal the next move below.`;$('#reveal-hint').hidden=false;$('#notice').textContent='Gentle hint used. You can still earn stars.'}
 function revealHint(){if(won||!hintContext||hintContext.key!==saveKey()||!same(hintContext.position,p))return;if(!hintContext.revealed){hintContext.revealed=true;hints++;persist()}$('#hint-message').textContent='Try '+['↑ up','→ right','↓ down','← left'][hintContext.direction]+'. All pieces slide together.';draw();$('#reveal-hint').hidden=true}
 
 function todayKey(now=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)}
@@ -38,7 +38,7 @@ function load(i,reset=false){if(!Number.isInteger(i)||i<0||i>=stages.length)retu
 function playDaily(date=todayKey(),reset=false){if(arguments.length===0)clearDailyLink();mode='daily';day=validDay(date)?date:todayKey();openBoard(reset)}
 function restart(){openBoard(true)}
 function openBoard(reset=false){resetChallengeShare();let g=game(),s=saves[saveKey()];if(!reset&&validSave(s,g)){p=[...s.p];history=s.history.map(x=>[...x]);hints=Number.isInteger(s.hints)&&s.hints>=0?s.hints:1;recorded=s.recorded===true}else{p=[...g.start];history=[];hints=0;recorded=false}redoStack=!reset&&Array.isArray(s?.redoStack)&&validSave({p:s.redoStack.at(0),history:[...history,p,...s.redoStack.slice(1).reverse()]},g)?s.redoStack:[];hidePreview();hintContext=null;won=same(p,g.goal);if(won)recordFinish();buildBoard();draw();persist();$('#share-panel').hidden=true;$('#reveal-hint').hidden=true;$('#hint-message').textContent='';if(won)showWin();else $('#notice').textContent=history.length?'Resumed exactly where you left off.':mode==='daily'?'Same puzzle for everyone. New puzzle at midnight Bangkok time.':g.id===0?'Try → then ↓. Every piece moves.':''}
-function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').innerHTML=pairs.map(v=>`<div class="food-pair ${v.color}"><span class="legend-icons">${foodIcon(v.foodIcon)}<span class="pair-arrow">→</span>${foodIcon(v.animalIcon)}</span><span class="pair-label">${v.food} → ${v.animal}</span></div>`).join('');$('#board').style.gridTemplateColumns=`repeat(${g.n},1fr)`;$('#board').innerHTML=Array.from({length:g.n*g.n},(_,j)=>{let t=g.goal.indexOf(j),v=pairs[t];return `<div class="tile ${g.walls.includes(j)?'wall':''}" data-cell="${j}"${v?` role="img" aria-label="${v.animal} target for ${v.food.toLowerCase()}"`:''}>${v?`<span class="target animal-target ${v.color}">${foodIcon(v.animalIcon)}<span class="icon-label">${v.animal}</span></span>`:''}</div>`}).join('')+`<div class="piece-layer" style="--n:${g.n}">${p.map((_,i)=>{let v=pairs[i];return `<span class="moving-piece ${v.color}" data-piece="${i}" role="img" aria-label="${v.food}, feed the ${v.animal.toLowerCase()}">${foodIcon(v.foodIcon)}<span class="icon-label">${v.food}</span></span>`}).join('')}</div><div id="preview-layer" aria-hidden="true" style="--n:${g.n}"></div>`;placePieces();}
+function buildBoard(){let g=game(),pairs=pairsFor(g.start.length);$('#legend').innerHTML=pairs.map(v=>`<div class="food-pair ${v.color}"><span class="legend-icons">${pieceArt(v.foodIcon)}<span class="pair-arrow">→</span>${pieceArt(v.animalIcon)}</span><span class="pair-label">${v.food} → ${v.animal}</span></div>`).join('');$('#board').style.gridTemplateColumns=`repeat(${g.n},1fr)`;$('#board').innerHTML=Array.from({length:g.n*g.n},(_,j)=>{let t=g.goal.indexOf(j),v=pairs[t];return `<div class="tile ${g.walls.includes(j)?'wall':''}" data-cell="${j}"${v?` role="img" aria-label="${v.animal} target for ${v.food.toLowerCase()}"`:''}>${v?`<span class="target animal-target ${v.color}">${pieceArt(v.animalIcon)}<span class="icon-label">${v.animal}</span></span>`:''}</div>`}).join('')+`<div class="piece-layer" style="--n:${g.n}">${p.map((_,i)=>{let v=pairs[i];return `<span class="moving-piece ${v.color}" data-piece="${i}" role="img" aria-label="${v.food}, match the ${v.animal.toLowerCase()}">${pieceArt(v.foodIcon)}<span class="icon-label">${v.food}</span></span>`}).join('')}</div><div id="preview-layer" aria-hidden="true" style="--n:${g.n}"></div>`;placePieces();}
 function showFoodOnTarget(piece, cell){
   if(!piece.isConnected)return;
   piece.classList.add('on-target');
@@ -73,7 +73,7 @@ $('#levels').innerHTML=['Easy','Normal','Hard'].map(group=>{
 }).join('');
 let total=stages.reduce((n,g,i)=>n+stars(best[campaignId(i)],g.par),0),solved=stages.filter((g,i)=>stars(best[campaignId(i)],g.par)>0).length;$('#progress').textContent=`${solved} / ${stages.length} solved · ${total} / ${stages.length*3} stars`;let score=mode==='daily'?dailyBest[day]?.moves:best[campaignId(level)];$('#rating').textContent=starText(stars(score,g.par));$('#rating').setAttribute('aria-label',stars(score,g.par)+' stars earned');$('#star-guide').textContent=`★★★ ${g.par} moves · ★★ ≤${g.par+Math.max(2,Math.ceil(g.par*.2))} · ★ finish`;$('#difficulty').textContent=mode==='daily'?'DAILY CHALLENGE / '+day:difficulty(g).toUpperCase()+(g.id>=20&&g.id<23?' / FOUR-FOOD BONUS':'');$('#name').textContent=mode==='daily'?'One puzzle. Everyone together.':(names[g.id]||'Easy puzzle · '+g.par+' moves');$('#moves').textContent=history.length;$('#daily-button').classList.toggle('selected',mode==='daily');$('#daily-date').textContent=todayKey()+' · resets 00:00 Bangkok';$('#share-button').hidden=mode!=='daily'||!won;placePieces();drawRecords();renderReturnPlay();renderChallenge();renderShop()}
 function act(d,fromRedo=false){if(won||!Number.isInteger(d)||d<0||d>3)return;let q=step(p,d,game());if(same(p,q)){$('#notice').textContent='Blocked. Try another direction.';return}if(!fromRedo)redoStack=[];hidePreview();clearHint();history.push([...p]);p=q;won=same(p,game().goal);if(won){recordFinish();if(mode==='campaign'){best[campaignId(level)]=Math.min(Number.isFinite(best[campaignId(level)])?best[campaignId(level)]:Infinity,history.length);write('together-best',best)}else{let old=dailyBest[day];if(!old||history.length<old.moves||(history.length===old.moves&&hints<old.hints)){dailyBest[day]={moves:history.length,hints};write('together-daily-best',dailyBest)}}}draw();persist();$('#notice').textContent='';if(won)showWin()}
-function showWin(){let n=stars(history.length,game().par);$('#notice').innerHTML=`<strong>${starText(n)} All animals fed!</strong>${hints===0?' 🏅 Hint-free!':''}`+(mode==='campaign'&&level<stages.length-1?` <button onclick="load(${level+1})">Next level →</button>`:mode==='daily'?' Your daily result is ready to share.':' You solved the collection.');$('#share-button').hidden=mode!=='daily'}
+function showWin(){let n=stars(history.length,game().par);$('#notice').innerHTML=`<strong>${starText(n)} Puzzle solved!</strong>${hints===0?' 🏅 Hint-free!':''}`+(mode==='campaign'&&level<stages.length-1?` <button onclick="load(${level+1})">Next level →</button>`:mode==='daily'?' Your daily result is ready to share.':' You solved the collection.');$('#share-button').hidden=mode!=='daily'}
 function undo(){if(!history.length)return;resetChallengeShare();hidePreview();clearHint();redoStack.push([...p]);p=history.pop();won=false;draw();persist();$('#share-panel').hidden=true;$('#notice').textContent='Move undone.'}
 function shareText(){return `Together · Daily ${day}\n${starText(stars(history.length,game().par))} · ${history.length} moves\n${hints===0?'🏅 Hint-free':hints+' hint'+(hints===1?'':'s')+' used'} · No spoilers\n${location.origin}${location.pathname}?daily=${day}`}
 async function shareResult(){if(mode!=='daily'||!won)return;let text=shareText();$('#share-panel').hidden=false;$('#share-text').value=text;try{await navigator.clipboard.writeText(text);$('#share-status').textContent='Result copied! Paste it wherever you like.'}catch{$('#share-status').textContent='Select and copy your result below.';$('#share-text').focus();$('#share-text').select()}}
@@ -97,7 +97,7 @@ function preview(direction){
   const g=game(), destinations=step(p,direction,g);
   layer.innerHTML=destinations.map((cell,i)=>{
     const pair=pairAt(i);
-    return `<span class="preview-piece ${pair.color}" style="grid-area:${Math.floor(cell/g.n)+1}/${cell%g.n+1}">${foodIcon(pair.foodIcon)}</span>`;
+    return `<span class="preview-piece ${pair.color}" style="grid-area:${Math.floor(cell/g.n)+1}/${cell%g.n+1}">${pieceArt(pair.foodIcon)}</span>`;
   }).join('');
 }
 function setupPress(button,direction){
@@ -246,7 +246,7 @@ function resetChallengeShare(){
 }
 trackChallenge();
 const themes = [
-  {id:'classic', name:'Classic', cost:0},
+  {id:'classic', name:'Classic board', cost:0},
   {id:'orchard', name:'Orchard', cost:80},
   {id:'ocean', name:'Ocean', cost:130},
   {id:'violet', name:'Starlight', cost:180}
@@ -256,6 +256,15 @@ wallet.gold ??= 0;
 wallet.claimed ??= {};
 wallet.owned ??= {classic:true};
 wallet.active ??= 'classic';
+wallet.pieces ??= 'geometry';
+wallet.pieceOwned ??= {geometry:true};
+
+const pieceStyles = [
+  {id:'geometry', name:'Classic Geometry', cost:0, sample:['●','◯']},
+  {id:'farm', name:'Food & Animals', cost:60, sample:['carrot','rabbit']},
+  {id:'emoji', name:'Emoji Buddies', cost:100, sample:['banana','monkey']}
+];
+
 
 function awardGold(key, amount) {
   if (wallet.claimed[key]) return false;
@@ -298,6 +307,14 @@ function renderShop() {
   if(!$('#gold-balance'))return;
   const goals = syncRewards();
   $('body').dataset.theme = wallet.active;
+  $('body').dataset.pieces = wallet.pieces;
+  $('#piece-options').innerHTML=pieceStyles.map(style=>{
+    const active=wallet.pieces===style.id;
+    const action=active?'Equipped':wallet.pieceOwned[style.id]?'Equip':'Buy · '+style.cost+' gold';
+    const preview=style.sample.map(icon=>pieceArt(icon,style.id)).join('<span aria-hidden="true">→</span>');
+    return '<button type="button" data-piece-style="'+style.id+'" '+(active?'disabled':'')+
+      '><span class="piece-swatch">'+preview+'</span><strong>'+style.name+'</strong><small>'+action+'</small></button>';
+  }).join('');
   $('#gold-balance').textContent = wallet.gold+' gold';
   $('#gold-goals').innerHTML=goals.map(([key,name,amount,count,total]) =>
     '<li>'+name+' · '+Math.min(count,total)+'/'+total+' · '+amount+
@@ -323,6 +340,23 @@ function selectTheme(id) {
   renderShop();
   $('#gold-status').textContent=theme.name+' equipped.';
 }
+function selectPieceStyle(id){
+  const style=pieceStyles.find(item=>item.id===id);
+  if(!style)return;
+  if(!wallet.pieceOwned[id]){
+    if(wallet.gold<style.cost){
+      $('#gold-status').textContent='You need '+(style.cost-wallet.gold)+' more gold.';
+      return;
+    }
+    wallet.gold-=style.cost;
+    wallet.pieceOwned[id]=true;
+  }
+  wallet.pieces=id;
+  storeWallet();
+  buildBoard();
+  renderShop();
+  $('#gold-status').textContent=style.name+' equipped.';
+}
 function redeemGold(code) {
   if(code.trim().toUpperCase()!=='TOGETHER50')return 'That gift code is invalid.';
   if(!awardGold('gift:TOGETHER50',50))return 'You already redeemed this gift code.';
@@ -331,6 +365,10 @@ function redeemGold(code) {
   return 'Gift redeemed · +50 gold.';
 }
 if($('#gold-balance')){
+  $('#piece-options').addEventListener('click',event=>{
+    const button=event.target.closest('[data-piece-style]');
+    if(button)selectPieceStyle(button.dataset.pieceStyle);
+  });
   $('#theme-options').addEventListener('click',event=>{
     const button=event.target.closest('[data-buy]');
     if(button)selectTheme(button.dataset.buy);

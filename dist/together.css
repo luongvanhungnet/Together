@@ -61,3 +61,16 @@ body[data-theme]{background:var(--theme-background,#101615)}
 body[data-theme] #board{background:var(--theme-board,#0a100e)}
 body[data-theme] #board .tile:not(.wall){background:var(--theme-tile,#26372e)}
 body[data-theme] #board .wall{background:var(--theme-wall,#101815)}
+#piece-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
+#piece-options button{padding:8px;text-align:left}
+#piece-options small{display:block;margin-top:4px;color:#d9e2db}
+.piece-swatch{display:flex;align-items:center;justify-content:center;gap:4px;padding:4px;background:#17251e;border-radius:5px;margin-bottom:6px}
+.piece-swatch .food-art{width:26px;height:26px}
+.piece-symbol{display:grid;place-items:center;font-size:clamp(12px,4vw,40px);line-height:1;color:inherit}
+.piece-swatch .piece-symbol,.legend-icons .piece-symbol{font-size:24px}
+.moving-piece.on-target .piece-symbol,.shared-target .animal-target .piece-symbol{font-size:clamp(9px,2.5vw,26px)}
+body[data-pieces=geometry] .moving-piece,body[data-pieces=geometry] .animal-target{color:#243a32}
+body[data-pieces=geometry] .red{color:#a53132}
+body[data-pieces=geometry] .blue{color:#235b9e}
+body[data-pieces=geometry] .yellow{color:#906506}
+body[data-pieces=geometry] .white{color:#56625d}
