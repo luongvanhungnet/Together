@@ -85,3 +85,22 @@ body[data-pieces=geometry] .white{color:#56625d}
 #board .moving-piece.on-target::after{position:absolute;inset:0;display:grid;place-items:center;font:bold clamp(16px,5vw,56px)/1 Arial,sans-serif;text-shadow:0 0 3px white;opacity:.78;pointer-events:none}
 #board .moving-piece.on-target[data-match=wrong]::after{content:"×";color:#ad1927}
 #board .moving-piece.on-target[data-match=correct]::after{content:"✓";color:#246822}
+
+.geometry-art{display:grid;place-items:center}
+.geometry-shape{position:relative;display:block;width:66%;aspect-ratio:1;background:currentColor}
+.geometry-shape.circle{border-radius:50%}
+.geometry-shape.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.geometry-shape.triangle{clip-path:polygon(50% 4%,100% 96%,0 96%)}
+.geometry-shape.outline::after{content:"";position:absolute;inset:0;background:#e9f0e3;border-radius:inherit;clip-path:inherit;transform:scale(.82)}
+#board .geometry-art,#board .moving-piece.on-target .geometry-art{width:72%;height:72%;filter:none}
+#board .animal-target{container-type:size}
+#board .moving-piece{container-type:size}
+#board .geometry-shape{width:46cqw;max-width:48px}
+#board .animal-target .geometry-shape{width:calc(46cqw / .96)}
+.piece-swatch .geometry-shape::after{background:#17251e}
+.legend-icons .geometry-shape::after{background:#f4f1e5}
+#board{container-type:inline-size}
+#board .tile,.piece-layer,#preview-layer{container-type:inline-size}
+#board .moving-piece,#board .animal-target{container-type:normal}
+#board .moving-piece{container-type:inline-size}
+#board .moving-piece .geometry-shape,#board .animal-target .geometry-shape{width:min(46cqw,48px)}

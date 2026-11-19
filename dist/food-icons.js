@@ -23,6 +23,13 @@ const PIECE_EMOJI={carrot:'🥕',banana:'🍌',bone:'🦴',fish:'🐟',rabbit:'�
 
 function pieceArt(icon, style=wallet.pieces){
   if(style==='farm')return foodIcon(icon);
+  if(style==='geometry'){
+    const shapes={ '●':'circle','◯':'circle','◆':'diamond','◇':'diamond',
+      '■':'square','□':'square','▲':'triangle','△':'triangle' };
+    const outline='◯◇□△'.includes(icon);
+    return '<span class="food-art geometry-art" aria-hidden="true"><span class="geometry-shape '+
+      shapes[icon]+(outline?' outline':'')+'"></span></span>';
+  }
   const symbol=style==='emoji'?PIECE_EMOJI[icon]:icon;
   return '<span class="food-art piece-symbol" aria-hidden="true">'+symbol+'</span>';
 }
