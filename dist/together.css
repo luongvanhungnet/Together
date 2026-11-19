@@ -105,3 +105,9 @@ body[data-pieces=geometry] .white{color:#56625d}
 #board .moving-piece{container-type:inline-size}
 #board .moving-piece .geometry-shape,#board .animal-target .geometry-shape{width:min(46cqw,48px)}
 .moving-piece.green,.animal-target.green,.preview-piece.green,.food-pair.green{color:#40864a}
+.account-panel summary{cursor:pointer;font-weight:700}
+.account-panel form{display:grid;gap:8px;margin-top:10px}
+.account-panel label:not(.account-import){display:grid;gap:4px}
+.account-panel input:not([type=checkbox]){width:100%;padding:8px;background:#fff8e8;color:#18271f;border:0;border-radius:4px}
+.account-import{font-size:12px}
+.account-panel button{padding:8px}

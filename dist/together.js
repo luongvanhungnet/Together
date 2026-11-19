@@ -9,8 +9,11 @@ function step(pos,d,g){let [dx,dy]=[[0,-1],[1,0],[0,1],[-1,0]][d],r=[...pos];let
 function same(a,b){return a.join(',')===b.join(',')}
 function solve(start,g){let queue=[start],seen=new Set([start.join(',')]),prev=new Map(),goal=null;for(let h=0;h<queue.length;h++){let s=queue[h];if(same(s,g.goal)){goal=s.join(',');break}for(let d=0;d<4;d++){let t=step(s,d,g),k=t.join(',');if(!seen.has(k)){seen.add(k);prev.set(k,[s.join(','),d]);queue.push(t)}}}if(goal===null)return null;let path=[];while(prev.has(goal)){let [old,d]=prev.get(goal);path.push(d);goal=old}return path.reverse()}
 const $=s=>document.querySelector(s),names=['Learn in two moves','A small problem','The long way around','No easy way home','Everything is connected','Crossed paths','The holding pattern','Thread the needle','A little cooperation','Wrong turn, right idea','The waiting room','Perfect interference','Three-body problem','The narrow escape','Almost together','The last detour','Tangled intentions','The long goodbye','A beautiful mistake','One final wrong turn','Dinner for four','Bone to pick','Full house'];
-function read(key,fallback){try{let v=JSON.parse(localStorage.getItem(key));return v&&typeof v==='object'&&!Array.isArray(v)?v:fallback}catch{return fallback}}
-let storageOK=true;function write(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch{storageOK=false}}
+function windowStore(){
+  return globalThis.togetherAccountStore || localStorage;
+}
+function read(key,fallback){try{let v=JSON.parse((windowStore()).getItem(key));return v&&typeof v==='object'&&!Array.isArray(v)?v:fallback}catch{return fallback}}
+let storageOK=true;function write(key,value){try{(windowStore()).setItem(key,JSON.stringify(value))}catch{storageOK=false}}
 let best=read('together-best',{}),dailyBest=read('together-daily-best',{}),saves=read('together-saves-v1',{}),level=0,mode='campaign',day='',p=[],history=[],won=false,hints=0;
 let redoStack=[];
 let records=read('together-records-v1',{}),dailyCompletions=read('together-streak-days-v1',{}),recorded=false,hintContext=null;
